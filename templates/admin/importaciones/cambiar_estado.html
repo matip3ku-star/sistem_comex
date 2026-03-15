@@ -1,0 +1,177 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}Cambiar estado — {{ importacion.numero_orden }}{% endblock %}
+
+{% block extrahead %}
+<style>
+  .cambio-estado-wrap {
+    max-width: 520px;
+    margin: 32px auto;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0,0,0,.10);
+    padding: 32px;
+  }
+  .cambio-titulo {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: #2c3e50;
+    margin-bottom: 4px;
+  }
+  .cambio-subtitulo {
+    font-size: 13px;
+    color: #888;
+    margin-bottom: 24px;
+  }
+  .info-fila {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 24px;
+    padding: 14px 16px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border-left: 4px solid #3498db;
+  }
+  .info-item label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    color: #aaa;
+    text-transform: uppercase;
+    letter-spacing: .4px;
+    margin-bottom: 3px;
+  }
+  .info-item span {
+    font-size: 14px;
+    font-weight: 500;
+    color: #2c3e50;
+  }
+  .badge-estado {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 600;
+    color: white;
+  }
+  .campo-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: #555;
+    margin-bottom: 6px;
+    margin-top: 16px;
+  }
+  .campo-select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 2px solid #dee2e6;
+    border-radius: 8px;
+    font-size: 14px;
+    color: #2c3e50;
+    background: white;
+  }
+  .campo-select:focus { outline: none; border-color: #3498db; }
+  .campo-textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 2px solid #dee2e6;
+    border-radius: 8px;
+    font-size: 14px;
+    color: #2c3e50;
+    resize: vertical;
+    min-height: 90px;
+    box-sizing: border-box;
+  }
+  .campo-textarea:focus { outline: none; border-color: #3498db; }
+  .acciones {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 24px;
+  }
+  .btn-cancelar {
+    padding: 10px 22px;
+    background: #ecf0f1;
+    color: #555;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+  }
+  .btn-cancelar:hover { background: #dfe6e9; text-decoration: none; color: #555; }
+  .btn-confirmar {
+    padding: 10px 22px;
+    background: #27ae60;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .btn-confirmar:hover { background: #219a52; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="cambio-estado-wrap">
+  <div class="cambio-titulo">Cambiar estado de importación</div>
+  <div class="cambio-subtitulo">OC {{ importacion.numero_orden }} — {{ importacion.proveedor.nombre }}</div>
+
+  <div class="info-fila">
+    <div class="info-item">
+      <label>Estado actual</label>
+      <span>
+        {% if importacion.estado == "ORDENADO" %}
+          <span class="badge-estado" style="background:#3498db;">Ordenado</span>
+        {% elif importacion.estado == "EN_TRANSITO" %}
+          <span class="badge-estado" style="background:#9b59b6;">En tránsito</span>
+        {% elif importacion.estado == "EN_ADUANA" %}
+          <span class="badge-estado" style="background:#e67e22;">En aduana</span>
+        {% elif importacion.estado == "DESPACHADO" %}
+          <span class="badge-estado" style="background:#f1c40f;color:#333;">Despachado</span>
+        {% elif importacion.estado == "RECIBIDO" %}
+          <span class="badge-estado" style="background:#27ae60;">Recibido</span>
+        {% else %}
+          <span class="badge-estado" style="background:#95a5a6;">{{ importacion.get_estado_display }}</span>
+        {% endif %}
+      </span>
+    </div>
+    <div class="info-item">
+      <label>Fecha orden</label>
+      <span>{{ importacion.fecha_orden|date:"d M Y" }}</span>
+    </div>
+    <div class="info-item">
+      <label>ETA</label>
+      <span>{% if importacion.fecha_eta %}{{ importacion.fecha_eta|date:"d M Y" }}{% else %}—{% endif %}</span>
+    </div>
+  </div>
+
+  <form method="post">
+    {% csrf_token %}
+
+    <label class="campo-label">Nuevo estado</label>
+    <select class="campo-select" name="estado_nuevo">
+      {% for valor, label in estados %}
+      <option value="{{ valor }}" {% if valor == estado_sugerido %}selected{% endif %}>
+        {{ label }}
+      </option>
+      {% endfor %}
+    </select>
+
+    <label class="campo-label">Notas (opcional)</label>
+    <textarea class="campo-textarea" name="notas"
+      placeholder="Ej: Mercadería recibida conforme, sin observaciones..."></textarea>
+
+    <div class="acciones">
+      <a href="{% url 'admin:importaciones_importacion_changelist' %}" class="btn-cancelar">Cancelar</a>
+      <button type="submit" class="btn-confirmar">Confirmar cambio</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

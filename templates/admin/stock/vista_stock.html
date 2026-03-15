@@ -1,0 +1,264 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block title %}Control de Stock — COMEX{% endblock %}
+
+{% block extrastyle %}
+<style>
+  .stock-wrap { padding: 24px; }
+  .stock-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; }
+  .stock-header h1 { font-size:22px; margin:0; font-weight:600; }
+
+  .filtros { display:flex; gap:8px; margin-bottom:20px; flex-wrap:wrap; align-items:center; }
+  .filtros span { font-size:13px; color:#6c757d; font-weight:500; margin-right:4px; }
+  .filtros a {
+    padding:6px 16px; border-radius:20px; text-decoration:none;
+    font-size:13px; font-weight:500; border:1.5px solid #dee2e6;
+    color:#495057; background:#fff; transition:all .15s;
+  }
+  .filtros a.activo { background:#343a40; color:#fff; border-color:#343a40; }
+  .filtros a:hover:not(.activo) { border-color:#343a40; color:#343a40; }
+
+  .tabla { width:100%; border-collapse:collapse; background:#fff;
+    border-radius:10px; overflow:hidden; box-shadow:0 1px 6px rgba(0,0,0,.08); }
+  .tabla thead th {
+    background:#343a40; color:#fff; padding:11px 16px;
+    text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.5px;
+  }
+  .tabla tbody tr.prod-row { cursor:pointer; transition:background .12s; }
+  .tabla tbody tr.prod-row:hover { background:#f5f7ff; }
+  .tabla td { padding:11px 16px; border-bottom:1px solid #f2f2f2; font-size:14px; vertical-align:middle; }
+
+  .badge { padding:3px 10px; border-radius:12px; font-size:11px; font-weight:600; }
+  .badge-MP { background:#e3f2fd; color:#1565c0; }
+  .badge-PI { background:#e8f5e9; color:#2e7d32; }
+  .badge-SU { background:#fff3e0; color:#e65100; }
+  .badge-PT { background:#f3e5f5; color:#6a1b9a; }
+
+  .normal  { color:#27ae60; font-weight:600; }
+  .atencion{ color:#f39c12; font-weight:600; }
+  .critico { color:#e74c3c; font-weight:600; }
+
+  .arrow { display:inline-block; transition:transform .2s; color:#aaa; margin-right:6px; font-size:11px; }
+  .arrow.open { transform:rotate(90deg); color:#343a40; }
+
+  /* Fila de lotes */
+  .lotes-row { display:none; background:#f8f9fa; }
+  .lotes-row.show { display:table-row; }
+  .lotes-inner { padding:4px 16px 16px 48px; }
+
+  .sub-tabla { width:100%; border-collapse:collapse; margin-top:8px; }
+  .sub-tabla th { font-size:11px; text-transform:uppercase; color:#6c757d;
+    padding:6px 10px; border-bottom:2px solid #e0e0e0; text-align:left; }
+  .sub-tabla td { padding:8px 10px; font-size:13px; border-bottom:1px solid #f0f0f0; }
+  .sub-tabla tr:last-child td { border-bottom:none; }
+
+  .btn-mod {
+    padding:4px 12px; border-radius:6px; border:1.5px solid #007bff;
+    background:#fff; color:#007bff; font-size:12px; cursor:pointer;
+    font-weight:500; transition:all .15s;
+  }
+  .btn-mod:hover { background:#007bff; color:#fff; }
+
+  .input-cant {
+    width:85px; padding:4px 8px; border:1.5px solid #007bff;
+    border-radius:6px; font-size:13px; text-align:center;
+  }
+  .btn-ok  { padding:4px 10px; border-radius:6px; border:none; background:#27ae60; color:#fff; font-size:12px; cursor:pointer; margin-left:4px; }
+  .btn-no  { padding:4px 10px; border-radius:6px; border:none; background:#dc3545; color:#fff; font-size:12px; cursor:pointer; margin-left:2px; }
+
+  .badge-lib { background:#d4edda; color:#155724; padding:2px 8px; border-radius:10px; font-size:11px; }
+  .badge-blq { background:#fff3cd; color:#856404; padding:2px 8px; border-radius:10px; font-size:11px; }
+  .vencido   { color:#e74c3c; font-weight:600; }
+
+  .msg-ok  { color:#27ae60; font-size:12px; font-weight:600; margin-left:8px; }
+  .msg-err { color:#e74c3c; font-size:12px; font-weight:600; margin-left:8px; }
+
+  .empty-row td { text-align:center; padding:40px; color:#6c757d; font-style:italic; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="stock-wrap">
+
+  <div class="stock-header">
+    <h1>📦 Control de Stock</h1>
+  </div>
+
+  <!-- Buscador -->
+  <form method="get" style="margin-bottom:16px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+    <input type="hidden" name="categoria" value="{{ categoria_actual }}">
+    <input type="text" name="q" value="{{ busqueda }}"
+      placeholder="Buscar por código, nombre o proveedor..."
+      style="padding:8px 14px;border:1.5px solid #dee2e6;border-radius:8px;font-size:14px;width:340px;"
+      onfocus="this.style.borderColor='#343a40'" onblur="this.style.borderColor='#dee2e6'">
+    <button type="submit"
+      style="padding:8px 16px;background:#343a40;color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;">
+      🔍 Buscar
+    </button>
+    {% if busqueda %}
+      <a href="?categoria={{ categoria_actual }}"
+        style="padding:8px 14px;border:1.5px solid #dee2e6;border-radius:8px;font-size:13px;color:#6c757d;text-decoration:none;">
+        ✕ Limpiar
+      </a>
+      <span style="font-size:13px;color:#6c757d;">
+        {{ productos_data|length }} resultado{{ productos_data|length|pluralize }} para <strong>"{{ busqueda }}"</strong>
+      </span>
+    {% endif %}
+  </form>
+
+  <!-- Filtros por categoría -->
+  <div class="filtros">
+    <span>Categoría:</span>
+    {% for valor, label in categorias %}
+      <a href="?categoria={{ valor }}{% if busqueda %}&q={{ busqueda }}{% endif %}"
+        class="{% if categoria_actual == valor %}activo{% endif %}">{{ label }}</a>
+    {% endfor %}
+  </div>
+
+  <table class="tabla">
+    <thead>
+      <tr>
+        <th style="width:36%">Producto</th>
+        <th style="width:11%">Categoría</th>
+        <th style="width:13%">Stock disponible</th>
+        <th style="width:11%">Bloqueado</th>
+        <th style="width:9%">Unidad</th>
+        <th style="width:10%">Estado</th>
+        <th style="width:10%">Lotes</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in productos_data %}
+      <tr class="prod-row" onclick="toggleLotes({{ item.producto.pk }}, this)">
+        <td>
+          <span class="arrow" id="arr-{{ item.producto.pk }}">▶</span>
+          <strong>{{ item.producto.nombre }}</strong>
+          <small style="color:#999;margin-left:6px;">{{ item.producto.codigo }}</small>
+        </td>
+        <td><span class="badge badge-{{ item.producto.categoria }}">{{ item.producto.get_categoria_display }}</span></td>
+        <td class="{{ item.nivel_alerta }}">{{ item.stock_disponible }}</td>
+        <td style="color:#e67e22;">{{ item.stock_bloqueado }}</td>
+        <td style="color:#6c757d;">{{ item.producto.get_unidad_medida_display }}</td>
+        <td>
+          {% if item.nivel_alerta == "critico" %}<span class="critico">🔴 Crítico</span>
+          {% elif item.nivel_alerta == "atencion" %}<span class="atencion">⚠️ Atención</span>
+          {% else %}<span class="normal">✅ Normal</span>{% endif %}
+        </td>
+        <td style="color:#6c757d;font-size:13px;">{{ item.cantidad_lotes }} lote{{ item.cantidad_lotes|pluralize }}</td>
+      </tr>
+
+      <tr class="lotes-row" id="lotes-{{ item.producto.pk }}">
+        <td colspan="7">
+          <div class="lotes-inner" id="inner-{{ item.producto.pk }}">
+            <span style="color:#007bff;font-size:13px;">Cargando...</span>
+          </div>
+        </td>
+      </tr>
+      {% empty %}
+      <tr class="empty-row"><td colspan="7">No hay productos en esta categoría.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<script>
+const cache = {};
+
+function getCsrf() {
+  return document.cookie.split(';').map(c => c.trim())
+    .find(c => c.startsWith('csrftoken='))?.split('=')[1] || '';
+}
+
+function toggleLotes(pid, row) {
+  const fila = document.getElementById('lotes-' + pid);
+  const arr  = document.getElementById('arr-' + pid);
+  const inner = document.getElementById('inner-' + pid);
+
+  if (fila.classList.contains('show')) {
+    fila.classList.remove('show');
+    arr.classList.remove('open');
+    return;
+  }
+  fila.classList.add('show');
+  arr.classList.add('open');
+
+  if (cache[pid]) { renderLotes(inner, cache[pid]); return; }
+
+  fetch('/stock/lotes/' + pid + '/')
+    .then(r => r.json())
+    .then(data => { cache[pid] = data; renderLotes(inner, data); })
+    .catch(() => { inner.innerHTML = '<span style="color:red">Error al cargar.</span>'; });
+}
+
+function renderLotes(container, data) {
+  if (!data.lotes?.length) {
+    container.innerHTML = '<em style="color:#6c757d;font-size:13px;">Sin lotes activos.</em>';
+    return;
+  }
+  let h = '<table class="sub-tabla"><thead><tr><th>Nº Lote</th><th>Cantidad</th><th>Estado</th><th>Ingreso</th><th>Vencimiento</th><th>Acción</th></tr></thead><tbody>';
+  data.lotes.forEach(l => {
+    const est = l.estado === 'LIBERADO'
+      ? '<span class="badge-lib">Liberado</span>'
+      : '<span class="badge-blq">Bloqueado ANMAT</span>';
+    const venc = l.fecha_vencimiento
+      ? `<span class="${l.esta_vencido ? 'vencido' : ''}">${l.fecha_vencimiento}${l.esta_vencido ? ' ⚠️' : ''}</span>`
+      : '—';
+    h += `<tr id="lr-${l.id}">
+      <td><strong>${l.numero_lote}</strong></td>
+      <td id="c-${l.id}">${l.cantidad_actual}</td>
+      <td>${est}</td>
+      <td>${l.fecha_ingreso}</td>
+      <td>${venc}</td>
+      <td id="ac-${l.id}"><button class="btn-mod" onclick="editar(${l.id},${l.cantidad_actual},event)">✏️ Modificar</button></td>
+    </tr>`;
+  });
+  h += '</tbody></table>';
+  container.innerHTML = h;
+}
+
+function editar(lid, cantActual, e) {
+  e.stopPropagation();
+  const ac = document.getElementById('ac-' + lid);
+  ac.innerHTML = `
+    <input type="number" class="input-cant" id="inp-${lid}" value="${cantActual}" step="0.01" min="0">
+    <button class="btn-ok" onclick="guardar(${lid},event)">✓</button>
+    <button class="btn-no" onclick="cancelar(${lid},${cantActual},event)">✗</button>
+    <span id="msg-${lid}"></span>`;
+  document.getElementById('inp-' + lid).focus();
+  document.getElementById('inp-' + lid).select();
+}
+
+function cancelar(lid, cantActual, e) {
+  e.stopPropagation();
+  document.getElementById('ac-' + lid).innerHTML =
+    `<button class="btn-mod" onclick="editar(${lid},${cantActual},event)">✏️ Modificar</button>`;
+}
+
+function guardar(lid, e) {
+  e.stopPropagation();
+  const val = parseFloat(document.getElementById('inp-' + lid).value);
+  const msg = document.getElementById('msg-' + lid);
+  if (isNaN(val) || val < 0) { msg.className='msg-err'; msg.textContent='Valor inválido'; return; }
+
+  fetch('/stock/ajustar/' + lid + '/', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() },
+    body: JSON.stringify({ cantidad_nueva: val, motivo: 'Ajuste manual desde panel de stock' })
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.ok) {
+      document.getElementById('c-' + lid).textContent = val;
+      document.getElementById('ac-' + lid).innerHTML =
+        `<button class="btn-mod" onclick="editar(${lid},${val},event)">✏️ Modificar</button>`;
+      // Limpiar cache para recargar stock total en proxima apertura
+      Object.keys(cache).forEach(k => delete cache[k]);
+    } else {
+      msg.className='msg-err'; msg.textContent = data.error || 'Error';
+    }
+  })
+  .catch(() => { msg.className='msg-err'; msg.textContent='Error de conexión'; });
+}
+</script>
+{% endblock %}

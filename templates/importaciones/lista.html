@@ -1,0 +1,299 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block title %}Importaciones — COMEX{% endblock %}
+
+{% block extrahead %}
+<style>
+  :root {
+    --color-ordenado:   #3498db;
+    --color-transito:   #9b59b6;
+    --color-aduana:     #e67e22;
+    --color-despachado: #f39c12;
+    --color-recibido:   #27ae60;
+    --color-cancelado:  #95a5a6;
+  }
+  .page-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:24px; padding-bottom:16px; border-bottom:2px solid #e9ecef; }
+  .page-header h1 { font-size:1.6rem; font-weight:700; color:#2c3e50; margin:0; }
+  .filtros-bar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:20px; }
+  .filtro-btn { padding:6px 16px; border-radius:20px; border:2px solid #dee2e6; background:white; color:#555; font-size:13px; font-weight:500; cursor:pointer; text-decoration:none; transition:all .15s; }
+  .filtro-btn:hover { border-color:#3498db; color:#3498db; text-decoration:none; }
+  .filtro-btn.activo { background:#3498db; border-color:#3498db; color:white; }
+
+  /* Calendario */
+  .cal-container { position:relative; display:inline-block; }
+  .cal-trigger { display:flex; align-items:center; gap:8px; padding:6px 14px; border-radius:20px; border:2px solid #dee2e6; background:white; color:#555; font-size:13px; font-weight:500; cursor:pointer; transition:all .15s; white-space:nowrap; }
+  .cal-trigger:hover { border-color:#3498db; color:#3498db; }
+  .cal-trigger.activo { background:#3498db; border-color:#3498db; color:white; }
+  .cal-trigger svg { width:14px; height:14px; flex-shrink:0; }
+  .cal-dropdown { display:none; position:absolute; top:calc(100% + 8px); left:0; z-index:1000; background:white; border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,.15); border:1px solid #e9ecef; min-width:280px; overflow:hidden; }
+  .cal-dropdown.abierto { display:block; }
+  .cal-head { display:flex; align-items:center; justify-content:space-between; padding:12px 16px; border-bottom:1px solid #f0f0f0; background:#f8f9fa; }
+  .cal-head-title { font-size:14px; font-weight:600; color:#2c3e50; }
+  .cal-nav { background:none; border:none; cursor:pointer; font-size:18px; color:#888; width:28px; height:28px; border-radius:6px; display:flex; align-items:center; justify-content:center; }
+  .cal-nav:hover { background:#e9ecef; color:#2c3e50; }
+  .cal-grid { display:grid; grid-template-columns:repeat(7,1fr); padding:10px 12px; gap:2px; }
+  .cal-dname { font-size:11px; color:#aaa; text-align:center; padding:4px 0; font-weight:600; text-transform:uppercase; }
+  .cal-day { font-size:13px; text-align:center; padding:7px 4px; border-radius:6px; cursor:pointer; color:#2c3e50; transition:background .1s; line-height:1; }
+  .cal-day:hover { background:#e8f4fd; color:#3498db; }
+  .cal-day.hoy { background:#e8f4fd; color:#3498db; font-weight:600; }
+  .cal-day.sel { background:#3498db; color:white; font-weight:600; }
+  .cal-day.otro { color:#ccc; }
+  .cal-foot { padding:10px 16px; border-top:1px solid #f0f0f0; display:flex; justify-content:space-between; align-items:center; background:#f8f9fa; }
+  .btn-cal-limpiar { font-size:12px; color:#888; cursor:pointer; background:none; border:none; padding:4px 8px; border-radius:4px; }
+  .btn-cal-limpiar:hover { color:#e74c3c; }
+  .btn-cal-aplicar { font-size:12px; font-weight:600; color:white; background:#3498db; border:none; padding:6px 16px; border-radius:6px; cursor:pointer; }
+  .btn-cal-aplicar:hover { background:#2980b9; }
+
+  /* Tabla */
+  .tabla-importaciones { width:100%; border-collapse:collapse; background:white; border-radius:10px; overflow:hidden; box-shadow:0 1px 4px rgba(0,0,0,.08); }
+  .tabla-importaciones thead tr { background:#f8f9fa; border-bottom:2px solid #e9ecef; }
+  .tabla-importaciones th { padding:12px 14px; text-align:left; font-size:12px; font-weight:600; color:#6c757d; text-transform:uppercase; letter-spacing:.5px; }
+  .tabla-importaciones td { padding:13px 14px; font-size:14px; color:#2c3e50; border-bottom:1px solid #f0f0f0; vertical-align:middle; }
+  .tabla-importaciones tbody tr:hover { background:#f8fafc; }
+  .tabla-importaciones tbody tr:last-child td { border-bottom:none; }
+  .oc-codigo { font-weight:700; color:#2c3e50; font-size:13px; }
+  .proveedor-nombre { font-weight:500; }
+  .proveedor-pais { font-size:12px; color:#888; }
+  .badge-estado { display:inline-block; padding:4px 10px; border-radius:12px; font-size:12px; font-weight:600; color:white; white-space:nowrap; }
+  .badge-ORDENADO    { background:var(--color-ordenado); }
+  .badge-EN_TRANSITO { background:var(--color-transito); }
+  .badge-EN_ADUANA   { background:var(--color-aduana); }
+  .badge-DESPACHADO  { background:var(--color-despachado); color:#333; }
+  .badge-RECIBIDO    { background:var(--color-recibido); }
+  .badge-CANCELADO   { background:var(--color-cancelado); }
+  .badge-anmat-si { background:#e74c3c; color:white; padding:3px 9px; border-radius:10px; font-size:11px; font-weight:600; }
+  .badge-anmat-no { background:#ecf0f1; color:#7f8c8d; padding:3px 9px; border-radius:10px; font-size:11px; font-weight:600; }
+  .fecha-cell { font-size:13px; color:#555; }
+  .fecha-vencida { color:#e74c3c; font-weight:600; }
+  .monto-cell { font-size:13px; font-weight:500; }
+  .btn-cambiar-estado { padding:5px 12px; background:#3498db; color:white; border:none; border-radius:6px; font-size:12px; font-weight:600; cursor:pointer; }
+  .btn-cambiar-estado:hover { background:#2980b9; }
+  .btn-solo-lectura { padding:5px 12px; background:#ecf0f1; color:#95a5a6; border:none; border-radius:6px; font-size:12px; cursor:default; }
+  .sin-resultados { text-align:center; padding:60px 20px; color:#aaa; }
+  .sin-resultados .icono { font-size:48px; margin-bottom:12px; }
+
+  /* Modal */
+  .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:9999; align-items:center; justify-content:center; }
+  .modal-overlay.visible { display:flex; }
+  .modal-box { background:white; border-radius:12px; padding:28px; width:100%; max-width:440px; box-shadow:0 8px 32px rgba(0,0,0,.18); position:relative; }
+  .modal-title { font-size:1.1rem; font-weight:700; color:#2c3e50; margin-bottom:6px; }
+  .modal-oc { font-size:13px; color:#888; margin-bottom:20px; }
+  .modal-label { display:block; font-size:13px; font-weight:600; color:#555; margin-bottom:6px; }
+  .modal-select { width:100%; padding:10px 12px; border:2px solid #dee2e6; border-radius:8px; font-size:14px; color:#2c3e50; margin-bottom:16px; }
+  .modal-select:focus { outline:none; border-color:#3498db; }
+  .modal-textarea { width:100%; padding:10px 12px; border:2px solid #dee2e6; border-radius:8px; font-size:14px; color:#2c3e50; resize:vertical; min-height:80px; box-sizing:border-box; }
+  .modal-textarea:focus { outline:none; border-color:#3498db; }
+  .modal-acciones { display:flex; gap:10px; justify-content:flex-end; margin-top:20px; }
+  .btn-cancelar { padding:9px 20px; background:#ecf0f1; color:#555; border:none; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; }
+  .btn-confirmar { padding:9px 20px; background:#27ae60; color:white; border:none; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; }
+  .btn-confirmar:hover { background:#219a52; }
+  .btn-cerrar-modal { position:absolute; top:14px; right:16px; background:none; border:none; font-size:20px; color:#aaa; cursor:pointer; }
+  .alertas-django { margin-bottom:18px; }
+  .alerta { padding:12px 16px; border-radius:8px; margin-bottom:8px; font-size:14px; }
+  .alerta-success { background:#d4edda; color:#155724; border-left:4px solid #27ae60; }
+  .alerta-error   { background:#f8d7da; color:#721c24; border-left:4px solid #e74c3c; }
+  .alerta-warning { background:#fff3cd; color:#856404; border-left:4px solid #f39c12; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="padding:24px;">
+
+  <div class="page-header">
+    <h1>📦 Gestión de Importaciones</h1>
+    <span style="color:#888;font-size:14px;">{{ total }} importación{{ total|pluralize:"es" }} encontrada{{ total|pluralize:"s" }}</span>
+  </div>
+
+  {% if messages %}
+  <div class="alertas-django">
+    {% for msg in messages %}
+    <div class="alerta alerta-{{ msg.tags }}">{{ msg }}</div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- Filtros -->
+  <div class="filtros-bar">
+    <a href="?{% if fecha_filtro %}fecha={{ fecha_filtro }}{% endif %}" class="filtro-btn {% if not estado_filtro %}activo{% endif %}">Todas</a>
+    {% for valor, label in estados %}
+    <a href="?estado={{ valor }}{% if fecha_filtro %}&fecha={{ fecha_filtro }}{% endif %}" class="filtro-btn {% if estado_filtro == valor %}activo{% endif %}">{{ label }}</a>
+    {% endfor %}
+
+    <!-- Calendario desplegable -->
+    <div class="cal-container" id="calContainer">
+      <button class="cal-trigger {% if fecha_filtro %}activo{% endif %}" onclick="toggleCal(event)" type="button">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="1" y="2" width="14" height="13" rx="2"/>
+          <path d="M1 6h14M5 1v2M11 1v2"/>
+        </svg>
+        {% if fecha_filtro %}{{ fecha_filtro }}{% else %}Fecha orden{% endif %}
+      </button>
+      <div class="cal-dropdown" id="calDropdown">
+        <div class="cal-head">
+          <button class="cal-nav" onclick="calNav(-1)" type="button">&#8249;</button>
+          <span class="cal-head-title" id="calTitle"></span>
+          <button class="cal-nav" onclick="calNav(1)" type="button">&#8250;</button>
+        </div>
+        <div class="cal-grid" id="calGrid"></div>
+        <div class="cal-foot">
+          <button class="btn-cal-limpiar" onclick="limpiarFecha()" type="button">Limpiar filtro</button>
+          <button class="btn-cal-aplicar" onclick="aplicarFecha()" type="button">Aplicar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% if importaciones %}
+  <table class="tabla-importaciones">
+    <thead>
+      <tr>
+        <th>Número orden</th>
+        <th>Proveedor</th>
+        <th>Estado</th>
+        <th>ANMAT</th>
+        <th>Fecha orden</th>
+        <th>ETA</th>
+        <th>Costo estimado</th>
+        {% if puede_editar %}<th>Acción</th>{% endif %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for imp in importaciones %}
+      <tr>
+        <td><span class="oc-codigo">{{ imp.numero_orden }}</span></td>
+        <td>
+          <div class="proveedor-nombre">{{ imp.proveedor.nombre }}</div>
+          <div class="proveedor-pais">{{ imp.proveedor.pais_origen }}</div>
+        </td>
+        <td><span class="badge-estado badge-{{ imp.estado }}">{{ imp.get_estado_display }}</span></td>
+        <td>
+          {% if imp.requiere_anmat %}<span class="badge-anmat-si">Sí</span>
+          {% else %}<span class="badge-anmat-no">No</span>{% endif %}
+        </td>
+        <td class="fecha-cell">{{ imp.fecha_orden|date:"d M Y" }}</td>
+        <td class="fecha-cell">
+          {% if imp.fecha_eta %}
+            <span {% if imp.fecha_eta < today and imp.estado != 'RECIBIDO' %}class="fecha-vencida"{% endif %}>{{ imp.fecha_eta|date:"d M Y" }}</span>
+          {% else %}—{% endif %}
+        </td>
+        <td class="monto-cell">
+          {% if imp.costo_estimado_usd %}{{ imp.moneda }} {{ imp.costo_estimado_usd|floatformat:2 }}
+          {% else %}—{% endif %}
+        </td>
+        {% if puede_editar %}
+        <td>
+          {% if imp.estado != 'RECIBIDO' and imp.estado != 'CANCELADO' %}
+          <button class="btn-cambiar-estado" onclick="abrirModal({{ imp.pk }}, '{{ imp.numero_orden }}', '{{ imp.estado }}')">Cambiar estado</button>
+          {% else %}<span class="btn-solo-lectura">Finalizada</span>{% endif %}
+        </td>
+        {% endif %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="sin-resultados">
+    <div class="icono">📭</div>
+    <p>No hay importaciones con el filtro seleccionado.</p>
+  </div>
+  {% endif %}
+
+</div>
+
+{% if puede_editar %}
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal-box">
+    <button class="btn-cerrar-modal" onclick="cerrarModal()">✕</button>
+    <div class="modal-title">Cambiar estado de importación</div>
+    <div class="modal-oc" id="modalOC"></div>
+    <form id="formCambiarEstado" method="post" action="">
+      {% csrf_token %}
+      <label class="modal-label">Nuevo estado</label>
+      <select class="modal-select" name="estado_nuevo" id="selectEstado">
+        {% for valor, label in estados %}
+        <option value="{{ valor }}">{{ label }}</option>
+        {% endfor %}
+      </select>
+      <label class="modal-label">Notas (opcional)</label>
+      <textarea class="modal-textarea" name="notas" placeholder="Ej: Mercadería recibida conforme, sin observaciones..."></textarea>
+      <div class="modal-acciones">
+        <button type="button" class="btn-cancelar" onclick="cerrarModal()">Cancelar</button>
+        <button type="submit" class="btn-confirmar">Confirmar cambio</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+<script>
+const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const DCORTOS = ['Lu','Ma','Mi','Ju','Vi','Sa','Do'];
+const hoy = new Date();
+let calMes = hoy.getMonth(), calAnio = hoy.getFullYear();
+let fechaSel = null;
+
+const urlParams = new URLSearchParams(window.location.search);
+const fechaURL = urlParams.get('fecha');
+if (fechaURL) {
+  const p = fechaURL.split('-');
+  if (p.length === 3) {
+    fechaSel = new Date(parseInt(p[0]), parseInt(p[1])-1, parseInt(p[2]));
+    calMes = fechaSel.getMonth();
+    calAnio = fechaSel.getFullYear();
+  }
+}
+
+function renderCal() {
+  document.getElementById('calTitle').textContent = MESES[calMes] + ' ' + calAnio;
+  let html = DCORTOS.map(d => `<div class="cal-dname">${d}</div>`).join('');
+  const primero = new Date(calAnio, calMes, 1).getDay();
+  const offset = primero === 0 ? 6 : primero - 1;
+  const total = new Date(calAnio, calMes+1, 0).getDate();
+  const prevTotal = new Date(calAnio, calMes, 0).getDate();
+  for (let i = 0; i < offset; i++) html += `<div class="cal-day otro">${prevTotal-offset+i+1}</div>`;
+  for (let d = 1; d <= total; d++) {
+    const esHoy = d===hoy.getDate() && calMes===hoy.getMonth() && calAnio===hoy.getFullYear();
+    const esSel = fechaSel && d===fechaSel.getDate() && calMes===fechaSel.getMonth() && calAnio===fechaSel.getFullYear();
+    const cls = esSel ? 'sel' : esHoy ? 'hoy' : '';
+    html += `<div class="cal-day ${cls}" onclick="selDia(${d})">${d}</div>`;
+  }
+  document.getElementById('calGrid').innerHTML = html;
+}
+
+function selDia(d) { fechaSel = new Date(calAnio, calMes, d); renderCal(); }
+function calNav(dir) { calMes+=dir; if(calMes<0){calMes=11;calAnio--;} if(calMes>11){calMes=0;calAnio++;} renderCal(); }
+function toggleCal(e) { e.stopPropagation(); document.getElementById('calDropdown').classList.toggle('abierto'); renderCal(); }
+
+function aplicarFecha() {
+  if (!fechaSel) return;
+  const y=fechaSel.getFullYear(), m=String(fechaSel.getMonth()+1).padStart(2,'0'), d=String(fechaSel.getDate()).padStart(2,'0');
+  const estado = urlParams.get('estado')||'';
+  window.location.href = `?estado=${estado}&fecha=${y}-${m}-${d}`;
+}
+
+function limpiarFecha() {
+  const estado = urlParams.get('estado')||'';
+  window.location.href = `?estado=${estado}`;
+}
+
+document.addEventListener('click', function(e) {
+  const c = document.getElementById('calContainer');
+  if (c && !c.contains(e.target)) document.getElementById('calDropdown').classList.remove('abierto');
+});
+
+const ESTADOS_ORDEN = ['ORDENADO','EN_TRANSITO','EN_ADUANA','DESPACHADO','RECIBIDO','CANCELADO'];
+function abrirModal(pk, oc, estado) {
+  document.getElementById('modalOC').textContent = 'OC: ' + oc;
+  document.getElementById('formCambiarEstado').action = '/importaciones/' + pk + '/cambiar-estado/';
+  const sel = document.getElementById('selectEstado');
+  const idx = ESTADOS_ORDEN.indexOf(estado);
+  const sig = idx>=0 && idx<ESTADOS_ORDEN.length-1 ? ESTADOS_ORDEN[idx+1] : estado;
+  for (let o of sel.options) o.selected = o.value===sig;
+  document.getElementById('modalOverlay').classList.add('visible');
+}
+function cerrarModal() { document.getElementById('modalOverlay').classList.remove('visible'); }
+const ov = document.getElementById('modalOverlay');
+if (ov) ov.addEventListener('click', e => { if(e.target===ov) cerrarModal(); });
+</script>
+{% endblock %}

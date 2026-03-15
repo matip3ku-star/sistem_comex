@@ -1,0 +1,284 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block title %}Dashboard COMEX{% endblock %}
+
+{% block extrastyle %}
+<style>
+  .d{padding:20px}
+  .header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid #f0f0f0}
+  .header h1{font-size:18px;font-weight:600;margin:0;color:#343a40}
+  .header span{font-size:12px;color:#6c757d}
+
+  .kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:14px}
+  .kpi{background:#fff;border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:10px;box-shadow:0 1px 4px rgba(0,0,0,.07);border:1px solid #f0f0f0}
+  .kpi-icon{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex-shrink:0}
+  .kpi-icon.r{background:#ffebee;color:#e74c3c}
+  .kpi-icon.o{background:#fff3e0;color:#e65100}
+  .kpi-icon.b{background:#e3f2fd;color:#1565c0}
+  .kpi-icon.g{background:#e8f5e9;color:#2e7d32}
+  .kpi-icon.p{background:#f3e5f5;color:#6a1b9a}
+  .kpi-txt .n{font-size:22px;font-weight:700;line-height:1;margin-bottom:1px}
+  .kpi-txt .l{font-size:10px;color:#6c757d;text-transform:uppercase;letter-spacing:.4px}
+  .kpi-icon.r+.kpi-txt .n{color:#e74c3c}
+  .kpi-icon.o+.kpi-txt .n{color:#e65100}
+  .kpi-icon.b+.kpi-txt .n{color:#1565c0}
+  .kpi-icon.g+.kpi-txt .n{color:#27ae60}
+  .kpi-icon.p+.kpi-txt .n{color:#9b59b6}
+
+  .alertbar{background:#fff3e0;border:1px solid #ffe0b2;border-radius:8px;padding:10px 16px;margin-bottom:14px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+  .alertbar .titulo{font-size:12px;font-weight:600;color:#e65100;white-space:nowrap}
+  .alerta-item{font-size:12px;display:flex;align-items:center;gap:5px}
+  .alerta-item.rojo{color:#c62828}
+  .alerta-item.naranja{color:#e65100}
+  .alerta-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+  .dot-rojo{background:#e74c3c}
+  .dot-naranja{background:#f39c12}
+  .sin-alertas{font-size:12px;color:#27ae60;font-weight:500}
+
+  .modtabs{display:flex;gap:0;margin-bottom:12px;border-bottom:2px solid #f0f0f0}
+  .modtab{padding:9px 18px;font-size:13px;font-weight:500;cursor:pointer;color:#6c757d;border-bottom:2px solid transparent;margin-bottom:-2px;background:transparent;border-left:none;border-right:none;border-top:none;transition:all .15s}
+  .modtab:hover{color:#343a40}
+  .modtab.active{color:#343a40;border-bottom-color:#343a40}
+  .modtab .bcnt{background:#e74c3c;color:#fff;border-radius:10px;padding:1px 6px;font-size:10px;margin-left:5px}
+
+  .mpanel{display:none}.mpanel.active{display:block}
+
+  .section{margin-bottom:12px}
+  .section-t{font-size:11px;font-weight:600;color:#6c757d;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+
+  .timeline{display:flex;flex-direction:column;gap:6px}
+  .trow{background:#fff;border-radius:8px;padding:10px 14px;display:flex;align-items:center;gap:12px;box-shadow:0 1px 3px rgba(0,0,0,.06);border:1px solid #f0f0f0}
+  .trow-name{flex:1;min-width:0}
+  .trow-name strong{font-size:13px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .trow-name small{font-size:11px;color:#6c757d}
+  .trow-days{font-size:12px;color:#6c757d;width:70px;text-align:center;flex-shrink:0}
+  .trow-bar{flex:2;height:8px;background:#f0f0f0;border-radius:4px;overflow:hidden;min-width:60px}
+  .trow-bar-f{height:100%;border-radius:4px;transition:width .3s}
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+  .card{background:#fff;border-radius:10px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.07);border:1px solid #f0f0f0}
+  .card-t{font-size:11px;font-weight:600;color:#6c757d;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid #f0f0f0}
+
+  .fila{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #f8f8f8;font-size:13px}
+  .fila:last-child{border-bottom:none}
+  .fn{flex:1;min-width:0}
+  .fn strong{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .fn small{color:#999;font-size:11px}
+
+  .badge{padding:2px 8px;border-radius:8px;font-size:11px;font-weight:600;white-space:nowrap}
+  .br{background:#ffebee;color:#c62828}
+  .bo{background:#fff3e0;color:#e65100}
+  .bb{background:#e3f2fd;color:#1565c0}
+  .bg{background:#e8f5e9;color:#2e7d32}
+  .bp{background:#f3e5f5;color:#6a1b9a}
+  .estado-ORDENADO{background:#e3f2fd;color:#1565c0}
+  .estado-EN_TRANSITO{background:#f3e5f5;color:#6a1b9a}
+  .estado-EN_ADUANA{background:#fff3e0;color:#e65100}
+  .estado-DESPACHADO{background:#fff9c4;color:#f57f17}
+
+  .fin-res{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px}
+  .fin-card{background:#fff;border-radius:10px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.07);text-align:center;border:1px solid #f0f0f0}
+  .fin-num{font-size:22px;font-weight:700;margin-bottom:3px}
+  .fin-lbl{font-size:11px;color:#6c757d}
+
+  .empty{color:#adb5bd;font-size:12px;text-align:center;padding:20px;font-style:italic}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d">
+
+  <div class="header">
+    <h1>Dashboard COMEX</h1>
+    <span>{{ hoy|date:"d/m/Y" }} — Mecanizados Gabriel S.A.</span>
+  </div>
+
+  {% if alertas_criticas %}
+  <div class="alertbar">
+    <span class="titulo">Alertas criticas:</span>
+    {% for a in alertas_criticas %}
+    <span class="alerta-item {{ a.tipo }}">
+      <span class="alerta-dot dot-{{ a.tipo }}"></span>{{ a.msg }}
+    </span>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="alertbar" style="background:#e8f5e9;border-color:#c8e6c9">
+    <span class="sin-alertas">Sin alertas criticas al dia de hoy</span>
+  </div>
+  {% endif %}
+
+  <div class="kpis">
+    <div class="kpi">
+      <div class="kpi-icon {% if criticos > 0 %}r{% else %}g{% endif %}">!</div>
+      <div class="kpi-txt"><div class="n">{{ criticos }}</div><div class="l">Stock critico</div></div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-icon {% if atencion > 0 %}o{% else %}g{% endif %}">~</div>
+      <div class="kpi-txt"><div class="n">{{ atencion }}</div><div class="l">En atencion</div></div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-icon {% if tramites_urgentes_count > 0 %}p{% else %}g{% endif %}">A</div>
+      <div class="kpi-txt"><div class="n">{{ tramites_urgentes_count }}</div><div class="l">ANMAT urgente</div></div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-icon b">→</div>
+      <div class="kpi-txt"><div class="n">{{ total_importaciones_activas }}</div><div class="l">Importaciones</div></div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-icon {% if alertas_proveedores_count > 0 %}o{% else %}g{% endif %}">P</div>
+      <div class="kpi-txt"><div class="n">{{ alertas_proveedores_count }}</div><div class="l">Alertas prov.</div></div>
+    </div>
+  </div>
+
+  <div class="modtabs">
+    <button class="modtab active" onclick="showMod('stock',this)">Stock{% if criticos > 0 %}<span class="bcnt">{{ criticos }}</span>{% endif %}</button>
+    <button class="modtab" onclick="showMod('importaciones',this)">Importaciones</button>
+    <button class="modtab" onclick="showMod('pagos',this)">Pagos{% if pagos_vencidos_count > 0 %}<span class="bcnt">{{ pagos_vencidos_count }}</span>{% endif %}</button>
+    <button class="modtab" onclick="showMod('anmat',this)">ANMAT{% if tramites_urgentes_count > 0 %}<span class="bcnt">{{ tramites_urgentes_count }}</span>{% endif %}</button>
+    <button class="modtab" onclick="showMod('proveedores',this)">Proveedores{% if alertas_proveedores_count > 0 %}<span class="bcnt">{{ alertas_proveedores_count }}</span>{% endif %}</button>
+  </div>
+
+  <!-- STOCK -->
+  <div class="mpanel active" id="m-stock">
+    <div class="grid3">
+      <div class="card">
+        <div class="card-t">Stock critico</div>
+        {% if productos_criticos %}{% for item in productos_criticos %}
+        <div class="fila">
+          <div class="fn"><strong>{{ item.producto.nombre|truncatechars:24 }}</strong><small>{{ item.producto.codigo }}</small></div>
+          <span class="badge br">{{ item.stock }} {{ item.producto.get_unidad_medida_display }}</span>
+        </div>
+        {% endfor %}{% else %}<div class="empty">Sin productos criticos</div>{% endif %}
+      </div>
+      <div class="card">
+        <div class="card-t">En atencion</div>
+        {% if productos_atencion %}{% for item in productos_atencion %}
+        <div class="fila">
+          <div class="fn"><strong>{{ item.producto.nombre|truncatechars:24 }}</strong><small>{{ item.producto.codigo }}</small></div>
+          <span class="badge bo">{{ item.stock }} {{ item.producto.get_unidad_medida_display }}</span>
+        </div>
+        {% endfor %}{% else %}<div class="empty">Sin productos en atencion</div>{% endif %}
+      </div>
+      <div class="card">
+        <div class="card-t">Lotes proximos a vencer</div>
+        {% if lotes_por_vencer %}{% for lote in lotes_por_vencer %}
+        <div class="fila">
+          <div class="fn"><strong>{{ lote.numero_lote }}</strong><small>{{ lote.producto.nombre|truncatechars:20 }}</small></div>
+          <span class="badge bo">{{ lote.fecha_vencimiento|date:"d/m" }}</span>
+        </div>
+        {% endfor %}{% else %}<div class="empty">Sin lotes proximos a vencer</div>{% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- IMPORTACIONES -->
+  <div class="mpanel" id="m-importaciones">
+    <div class="section">
+      <div class="section-t">Importaciones en curso — timeline de dias</div>
+      <div class="timeline">
+        {% if importaciones_activas %}
+          {% for item in importaciones_activas %}
+          <div class="trow">
+            <div class="trow-name">
+              <strong>{{ item.imp.numero_orden }} — {{ item.imp.proveedor.nombre }}</strong>
+              <small>{{ item.imp.proveedor.pais_origen }}{% if item.imp.fecha_eta %} · ETA: {{ item.imp.fecha_eta|date:"d/m/Y" }}{% endif %}</small>
+            </div>
+            <div class="trow-days">
+              {% if item.dias_desde_orden is not None %}
+                <span style="font-weight:600;color:{% if item.dias_desde_orden > 60 %}#e74c3c{% elif item.dias_desde_orden > 30 %}#f39c12{% else %}#27ae60{% endif %}">
+                  {{ item.dias_desde_orden }} dias
+                </span>
+              {% else %}—{% endif %}
+            </div>
+            <div class="trow-bar">
+              <div class="trow-bar-f" style="width:{% if item.dias_desde_orden %}{% widthratio item.dias_desde_orden 90 100 %}{% else %}0{% endif %}%;background:{% if item.dias_desde_orden > 60 %}#e74c3c{% elif item.dias_desde_orden > 30 %}#f39c12{% else %}#27ae60{% endif %};max-width:100%"></div>
+            </div>
+            <span class="badge estado-{{ item.imp.estado }}">{{ item.imp.get_estado_display }}</span>
+            {% if item.tramite_estado %}
+              {% if item.tramite_urgente %}
+                <span class="badge br">{{ item.tramite_estado }}</span>
+              {% else %}
+                <span class="badge bp">ANMAT: {{ item.tramite_estado }}</span>
+              {% endif %}
+            {% endif %}
+          </div>
+          {% endfor %}
+        {% else %}
+          <div class="empty">Sin importaciones activas</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGOS -->
+  <div class="mpanel" id="m-pagos">
+    <div class="fin-res">
+      <div class="fin-card"><div class="fin-num" style="color:#e74c3c">{{ pagos_vencidos_count }}</div><div class="fin-lbl">Pagos vencidos</div></div>
+      <div class="fin-card"><div class="fin-num" style="color:#f39c12">{{ pagos_hoy }}</div><div class="fin-lbl">Vencen hoy</div></div>
+      <div class="fin-card"><div class="fin-num" style="color:#3498db">USD {{ total_pendiente_usd|floatformat:0 }}</div><div class="fin-lbl">Total pendiente</div></div>
+    </div>
+    <div class="card">
+      <div class="card-t">Pagos pendientes por vencimiento</div>
+      {% if pagos_pendientes %}{% for pago in pagos_pendientes %}
+      <div class="fila">
+        <div class="fn"><strong>{{ pago.proveedor.nombre }}</strong><small>{% if pago.importacion %}OC {{ pago.importacion.numero_orden }}{% endif %}</small></div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span style="font-size:12px;color:#6c757d">{{ pago.moneda }} {{ pago.monto }}</span>
+          {% with dias=pago.dias_para_vencimiento %}{% if dias is not None %}
+            {% if dias < 0 %}<span class="badge br">Vencido</span>
+            {% elif dias == 0 %}<span class="badge br">HOY</span>
+            {% elif dias <= 2 %}<span class="badge br">{{ dias }}d</span>
+            {% elif dias <= 7 %}<span class="badge bo">{{ dias }}d</span>
+            {% else %}<span class="badge bb">{{ dias }}d</span>{% endif %}
+          {% endif %}{% endwith %}
+        </div>
+      </div>
+      {% endfor %}{% else %}<div class="empty">Sin pagos pendientes</div>{% endif %}
+    </div>
+  </div>
+
+  <!-- ANMAT -->
+  <div class="mpanel" id="m-anmat">
+    <div class="card">
+      <div class="card-t">Tramites ANMAT activos</div>
+      {% if tramites_activos %}{% for t in tramites_activos %}
+      <div class="fila">
+        <div class="fn"><strong>OC {{ t.importacion.numero_orden }} — {{ t.importacion.proveedor.nombre }}</strong><small>Presentado: {{ t.fecha_presentacion|date:"d/m/Y" }}</small></div>
+        {% if t.estado == "PRESENTADO" %}<span class="badge bb">Presentado</span>
+        {% elif t.estado == "EN_TRAMITE" %}<span class="badge bp">En tramite</span>
+        {% elif t.estado == "OBSERVADO" %}<span class="badge br">Observado</span>
+        {% elif t.estado == "PAGO_VEP" %}<span class="badge br">Pago VEP</span>{% endif %}
+      </div>
+      {% endfor %}{% else %}<div class="empty">Sin tramites ANMAT activos</div>{% endif %}
+    </div>
+  </div>
+
+  <!-- PROVEEDORES -->
+  <div class="mpanel" id="m-proveedores">
+    <div class="card">
+      <div class="card-t">Alertas de proveedores activas</div>
+      {% if alertas_activas %}{% for alerta in alertas_activas %}
+      <div class="fila">
+        <div class="fn">
+          <strong>{{ alerta.proveedor.nombre }}</strong>
+          <small>{{ alerta.get_tipo_evento_display }} — {{ alerta.cantidad_eventos }} eventos en 180 dias</small>
+        </div>
+        <span class="badge bo">Revisar tiempos</span>
+      </div>
+      {% endfor %}{% else %}<div class="empty">Sin alertas activas de proveedores</div>{% endif %}
+    </div>
+  </div>
+
+</div>
+<script>
+function showMod(id,btn){
+  document.querySelectorAll('.mpanel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.modtab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('m-'+id).classList.add('active');
+  btn.classList.add('active');
+}
+</script>
+{% endblock %}

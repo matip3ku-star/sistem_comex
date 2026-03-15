@@ -1,0 +1,207 @@
+{% extends "admin/base_site.html" %}
+
+{% block title %}Importar datos — COMEX{% endblock %}
+
+{% block extrastyle %}
+<style>
+  .imp-wrap { padding: 24px; }
+  .imp-header { margin-bottom: 24px; }
+  .imp-header h1 { font-size: 20px; font-weight: 600; margin: 0 0 6px; }
+  .imp-header p { color: #6c757d; font-size: 13px; margin: 0; }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+
+  .card { background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 1px 6px rgba(0,0,0,.08); border: 1px solid #f0f0f0; }
+  .card-icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 22px; margin-bottom: 14px; }
+  .card-icon.verde { background: #e8f5e9; }
+  .card-icon.azul { background: #e3f2fd; }
+  .card h2 { font-size: 16px; font-weight: 600; margin: 0 0 6px; }
+  .card p { font-size: 13px; color: #6c757d; margin: 0 0 16px; }
+
+  .upload-area { border: 2px dashed #dee2e6; border-radius: 10px; padding: 24px; text-align: center; cursor: pointer; transition: all .2s; margin-bottom: 14px; background: #f8f9fa; }
+  .upload-area:hover { border-color: #343a40; background: #f0f4ff; }
+  .upload-area.drag { border-color: #343a40; background: #e8f5e9; }
+  .upload-area input { display: none; }
+  .upload-area .uc-icon { font-size: 28px; margin-bottom: 8px; }
+  .upload-area .uc-text { font-size: 13px; color: #6c757d; }
+  .upload-area .uc-nombre { font-size: 13px; font-weight: 600; color: #343a40; margin-top: 6px; }
+
+  .btn-importar { width: 100%; padding: 11px; border-radius: 8px; border: none; font-size: 14px; font-weight: 600; cursor: pointer; transition: all .15s; }
+  .btn-importar.verde { background: #27ae60; color: #fff; }
+  .btn-importar.verde:hover { background: #219653; }
+  .btn-importar.azul { background: #3498db; color: #fff; }
+  .btn-importar.azul:hover { background: #2980b9; }
+  .btn-importar:disabled { opacity: .5; cursor: not-allowed; }
+
+  .resultado { margin-top: 14px; border-radius: 8px; padding: 14px; display: none; }
+  .resultado.ok { background: #e8f5e9; border: 1px solid #c8e6c9; }
+  .resultado.error { background: #ffebee; border: 1px solid #ffcdd2; }
+  .resultado h4 { font-size: 13px; font-weight: 600; margin: 0 0 8px; }
+  .resultado.ok h4 { color: #2e7d32; }
+  .resultado.error h4 { color: #c62828; }
+  .resultado p { font-size: 12px; margin: 2px 0; }
+  .resultado.ok p { color: #388e3c; }
+  .resultado.error p { color: #c62828; }
+  .errores-lista { margin-top: 8px; max-height: 120px; overflow-y: auto; }
+  .errores-lista p { color: #e65100; font-size: 11px; background: #fff3e0; padding: 3px 8px; border-radius: 4px; margin-bottom: 3px; }
+
+  .descarga-section { background: #f8f9fa; border-radius: 10px; padding: 16px; border: 1px solid #f0f0f0; }
+  .descarga-section h3 { font-size: 13px; font-weight: 600; color: #343a40; margin: 0 0 10px; }
+  .btn-descargar { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 8px; text-decoration: none; font-size: 12px; font-weight: 500; transition: all .15s; border: 1.5px solid; }
+  .btn-descargar.verde { background: #fff; color: #27ae60; border-color: #27ae60; }
+  .btn-descargar.verde:hover { background: #27ae60; color: #fff; }
+  .btn-descargar.azul { background: #fff; color: #3498db; border-color: #3498db; }
+  .btn-descargar.azul:hover { background: #3498db; color: #fff; }
+
+  .loading { display: none; text-align: center; padding: 10px; color: #3498db; font-size: 13px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="imp-wrap">
+
+  <div class="imp-header">
+    <h1>Importar datos desde Excel</h1>
+    <p>Carga masiva de productos y proveedores usando los templates oficiales del sistema.</p>
+  </div>
+
+  <div class="grid2">
+
+    <!-- PRODUCTOS -->
+    <div class="card">
+      <div class="card-icon verde">📦</div>
+      <h2>Importar Productos</h2>
+      <p>Cargá el template de productos completo con todos los datos. El sistema crea los registros nuevos y actualiza los existentes por codigo.</p>
+
+      <div class="upload-area" id="drop-prod" onclick="document.getElementById('file-prod').click()">
+        <input type="file" id="file-prod" accept=".xlsx" onchange="seleccionarArchivo(this, 'prod')">
+        <div class="uc-icon">📂</div>
+        <div class="uc-text">Hacé clic o arrastrá el archivo aqui</div>
+        <div class="uc-nombre" id="nombre-prod">Ningun archivo seleccionado</div>
+      </div>
+
+      <button class="btn-importar verde" id="btn-prod" onclick="importar('productos')" disabled>
+        Importar productos
+      </button>
+      <div class="loading" id="load-prod">Procesando archivo...</div>
+      <div class="resultado" id="res-prod"></div>
+
+      <div class="descarga-section" style="margin-top:16px">
+        <h3>Template oficial</h3>
+        <a href="/importador/descargar/productos/" class="btn-descargar verde">
+          ⬇ Descargar template productos
+        </a>
+      </div>
+    </div>
+
+    <!-- PROVEEDORES -->
+    <div class="card">
+      <div class="card-icon azul">🚚</div>
+      <h2>Importar Proveedores</h2>
+      <p>Cargá el template de proveedores con los datos de contacto y condiciones comerciales. Crea o actualiza por nombre.</p>
+
+      <div class="upload-area" id="drop-prov" onclick="document.getElementById('file-prov').click()">
+        <input type="file" id="file-prov" accept=".xlsx" onchange="seleccionarArchivo(this, 'prov')">
+        <div class="uc-icon">📂</div>
+        <div class="uc-text">Hacé clic o arrastrá el archivo aqui</div>
+        <div class="uc-nombre" id="nombre-prov">Ningun archivo seleccionado</div>
+      </div>
+
+      <button class="btn-importar azul" id="btn-prov" onclick="importar('proveedores')" disabled>
+        Importar proveedores
+      </button>
+      <div class="loading" id="load-prov">Procesando archivo...</div>
+      <div class="resultado" id="res-prov"></div>
+
+      <div class="descarga-section" style="margin-top:16px">
+        <h3>Template oficial</h3>
+        <a href="/importador/descargar/proveedores/" class="btn-descargar azul">
+          ⬇ Descargar template proveedores
+        </a>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+function getCsrf() {
+  return document.cookie.split(';').map(c=>c.trim()).find(c=>c.startsWith('csrftoken='))?.split('=')[1]||'';
+}
+
+function seleccionarArchivo(input, tipo) {
+  const nombre = input.files[0]?.name || 'Ningun archivo seleccionado';
+  document.getElementById('nombre-' + tipo).textContent = nombre;
+  document.getElementById('btn-' + tipo).disabled = !input.files[0];
+  document.getElementById('res-' + tipo).style.display = 'none';
+}
+
+function importar(tipo) {
+  const fileInput = document.getElementById('file-' + (tipo === 'productos' ? 'prod' : 'prov'));
+  const btn = document.getElementById('btn-' + (tipo === 'productos' ? 'prod' : 'prov'));
+  const load = document.getElementById('load-' + (tipo === 'productos' ? 'prod' : 'prov'));
+  const res = document.getElementById('res-' + (tipo === 'productos' ? 'prod' : 'prov'));
+
+  if (!fileInput.files[0]) return;
+
+  const fd = new FormData();
+  fd.append('archivo', fileInput.files[0]);
+
+  btn.disabled = true;
+  load.style.display = 'block';
+  res.style.display = 'none';
+
+  fetch('/importador/' + tipo + '/', {
+    method: 'POST',
+    headers: { 'X-CSRFToken': getCsrf() },
+    body: fd
+  })
+  .then(r => r.json())
+  .then(data => {
+    load.style.display = 'none';
+    btn.disabled = false;
+    res.style.display = 'block';
+
+    if (data.ok) {
+      res.className = 'resultado ok';
+      res.innerHTML = `
+        <h4>Importacion exitosa</h4>
+        <p>Registros creados: <strong>${data.creados}</strong></p>
+        <p>Registros actualizados: <strong>${data.actualizados}</strong></p>
+        <p>Total procesados: <strong>${data.total}</strong></p>
+        ${data.errores.length > 0 ? `
+          <div class="errores-lista">
+            <p style="color:#e65100;font-weight:600">Advertencias (${data.errores.length} filas con problemas):</p>
+            ${data.errores.map(e => `<p>${e}</p>`).join('')}
+          </div>` : ''}
+      `;
+    } else {
+      res.className = 'resultado error';
+      res.innerHTML = `<h4>Error en la importacion</h4><p>${data.error}</p>`;
+    }
+  })
+  .catch(() => {
+    load.style.display = 'none';
+    btn.disabled = false;
+    res.className = 'resultado error';
+    res.style.display = 'block';
+    res.innerHTML = '<h4>Error</h4><p>No se pudo conectar con el servidor.</p>';
+  });
+}
+
+// Drag and drop
+['prod','prov'].forEach(tipo => {
+  const area = document.getElementById('drop-' + tipo);
+  area.addEventListener('dragover', e => { e.preventDefault(); area.classList.add('drag'); });
+  area.addEventListener('dragleave', () => area.classList.remove('drag'));
+  area.addEventListener('drop', e => {
+    e.preventDefault();
+    area.classList.remove('drag');
+    const input = document.getElementById('file-' + tipo);
+    input.files = e.dataTransfer.files;
+    seleccionarArchivo(input, tipo);
+  });
+});
+</script>
+{% endblock %}

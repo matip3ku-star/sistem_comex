@@ -1,0 +1,111 @@
+{% extends "admin/base_site.html" %}
+
+{% block title %}Auditoría de Stock — COMEX{% endblock %}
+
+{% block extrastyle %}
+<style>
+  .audit-wrap { padding: 24px; }
+  .audit-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; }
+  .audit-header h1 { font-size:22px; margin:0; font-weight:600; }
+
+  .filtros-form { display:flex; gap:10px; margin-bottom:20px; flex-wrap:wrap; align-items:flex-end; }
+  .filtros-form label { font-size:12px; color:#6c757d; display:block; margin-bottom:3px; }
+  .filtros-form input, .filtros-form select {
+    padding:6px 10px; border:1.5px solid #dee2e6; border-radius:6px;
+    font-size:13px; min-width:160px;
+  }
+  .btn-filtrar {
+    padding:7px 16px; background:#343a40; color:#fff; border:none;
+    border-radius:6px; font-size:13px; cursor:pointer;
+  }
+  .btn-limpiar {
+    padding:7px 14px; background:#fff; color:#6c757d; border:1.5px solid #dee2e6;
+    border-radius:6px; font-size:13px; cursor:pointer; text-decoration:none;
+  }
+
+  .tabla { width:100%; border-collapse:collapse; background:#fff;
+    border-radius:10px; overflow:hidden; box-shadow:0 1px 6px rgba(0,0,0,.08); }
+  .tabla thead th {
+    background:#343a40; color:#fff; padding:10px 14px;
+    text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.5px;
+  }
+  .tabla td { padding:10px 14px; border-bottom:1px solid #f2f2f2; font-size:13px; }
+  .tabla tr:last-child td { border-bottom:none; }
+  .tabla tr:hover td { background:#f9f9f9; }
+
+  .tipo-AJUSTE_POS { color:#27ae60; font-weight:600; }
+  .tipo-AJUSTE_NEG { color:#e74c3c; font-weight:600; }
+  .tipo-ENTRADA    { color:#007bff; font-weight:600; }
+  .tipo-SALIDA     { color:#6c757d; font-weight:600; }
+
+  .badge-admin { background:#f8d7da; color:#721c24; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:600; }
+  .aviso { background:#fff3cd; border:1px solid #ffc107; border-radius:8px; padding:12px 16px; margin-bottom:20px; font-size:13px; color:#856404; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="audit-wrap">
+
+  <div class="audit-header">
+    <h1>🔍 Auditoría de Movimientos de Stock</h1>
+    <span class="badge-admin">Solo administradores</span>
+  </div>
+
+  <div class="aviso">
+    ⚠️ Esta sección es de acceso restringido. Muestra todos los movimientos de stock realizados por cada usuario, con fecha y detalle de cada cambio.
+  </div>
+
+  <!-- Filtros -->
+  <form method="get" class="filtros-form">
+    <div>
+      <label>Usuario</label>
+      <input type="text" name="usuario" value="{{ usuario_filtro }}" placeholder="Buscar por usuario...">
+    </div>
+    <div>
+      <label>Tipo de movimiento</label>
+      <select name="tipo">
+        <option value="">Todos</option>
+        {% for valor, label in tipos %}
+          <option value="{{ valor }}" {% if tipo_filtro == valor %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label>Producto</label>
+      <input type="text" name="producto" value="{{ producto_filtro }}" placeholder="Buscar por producto...">
+    </div>
+    <button type="submit" class="btn-filtrar">Filtrar</button>
+    <a href="{% url 'log_auditoria' %}" class="btn-limpiar">Limpiar</a>
+  </form>
+
+  <table class="tabla">
+    <thead>
+      <tr>
+        <th>Fecha y hora</th>
+        <th>Usuario</th>
+        <th>Producto</th>
+        <th>Lote</th>
+        <th>Tipo</th>
+        <th>Cantidad</th>
+        <th>Detalle</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for mov in movimientos %}
+      <tr>
+        <td style="white-space:nowrap;">{{ mov.fecha_hora|date:"d/m/Y H:i" }}</td>
+        <td><strong>{{ mov.usuario.username|default:"—" }}</strong></td>
+        <td>{{ mov.lote.producto.nombre }}</td>
+        <td style="color:#6c757d;">{{ mov.lote.numero_lote }}</td>
+        <td><span class="tipo-{{ mov.tipo }}">{{ mov.get_tipo_display }}</span></td>
+        <td><strong>{{ mov.cantidad }}</strong> {{ mov.lote.producto.get_unidad_medida_display }}</td>
+        <td style="color:#6c757d;font-size:12px;">{{ mov.notas|truncatechars:80 }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="7" style="text-align:center;padding:40px;color:#6c757d;">No hay movimientos registrados.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+</div>
+{% endblock %}
