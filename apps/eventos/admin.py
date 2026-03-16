@@ -82,17 +82,18 @@ class AlertaProveedorAdmin(admin.ModelAdmin):
         "proveedor",
         "tipo_evento",
         "cantidad_eventos",
+        "dias_adicionales_recomendados",
         "badge_estado",
         "resuelta_por",
     )
     list_filter = ("resuelta", "tipo_evento", "proveedor")
     search_fields = ("proveedor__nombre", "mensaje")
     ordering = ("resuelta", "-creado_en")
-    readonly_fields = ("creado_en", "resuelta_en", "resuelta_por", "cantidad_eventos")
+    readonly_fields = ("creado_en", "resuelta_en", "resuelta_por")
 
     fieldsets = (
         ("Alerta", {
-            "fields": ("proveedor", "tipo_evento", "cantidad_eventos", "mensaje", "creado_en"),
+            "fields": ("proveedor", "tipo_evento", "cantidad_eventos", "dias_adicionales_recomendados", "mensaje", "creado_en"),
         }),
         ("Resolucion", {
             "fields": ("resuelta", "notas_resolucion", "resuelta_por", "resuelta_en"),

@@ -134,7 +134,6 @@ def ajustar_stock_lote(request, lote_id):
         else MovimientoStock.TipoMovimiento.AJUSTE_NEGATIVO
     )
 
-    # Log invisible para el usuario — solo accesible para admin
     MovimientoStock.objects.create(
         lote=lote,
         tipo=tipo,
@@ -151,6 +150,9 @@ def ajustar_stock_lote(request, lote_id):
 
 @user_passes_test(es_admin, login_url="/admin/login/")
 def log_auditoria(request):
+    from django.contrib.auth import get_user_model
+    Usuario = get_user_model()
+
     usuario_filtro = request.GET.get("usuario", "")
     tipo_filtro = request.GET.get("tipo", "")
     producto_filtro = request.GET.get("producto", "")
@@ -160,7 +162,7 @@ def log_auditoria(request):
     ).order_by("-fecha_hora")
 
     if usuario_filtro:
-        movimientos = movimientos.filter(usuario__username__icontains=usuario_filtro)
+        movimientos = movimientos.filter(usuario__id=usuario_filtro)
     if tipo_filtro:
         movimientos = movimientos.filter(tipo=tipo_filtro)
     if producto_filtro:
@@ -170,10 +172,16 @@ def log_auditoria(request):
 
     movimientos = movimientos[:500]
 
+    # Usuarios que tienen al menos un movimiento registrado
+    usuarios = Usuario.objects.filter(
+        movimientos_stock__isnull=False
+    ).distinct().order_by("username")
+
     context = {
         "title": "Auditoria de Stock",
         "movimientos": movimientos,
         "tipos": MovimientoStock.TipoMovimiento.choices,
+        "usuarios": usuarios,
         "usuario_filtro": usuario_filtro,
         "tipo_filtro": tipo_filtro,
         "producto_filtro": producto_filtro,
