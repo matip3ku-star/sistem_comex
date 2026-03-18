@@ -1,0 +1,80 @@
+{% extends "admin/base_site.html" %}
+
+{% block title %}Reset de datos de demo -- COMEX{% endblock %}
+
+{% block extrahead %}
+<style>
+  .reset-wrap { max-width: 560px; margin: 32px auto; }
+  .reset-card { background: white; border-radius: 12px; padding: 32px; box-shadow: 0 2px 12px rgba(0,0,0,.10); }
+  .reset-titulo { font-size: 1.3rem; font-weight: 700; color: #2c3e50; margin-bottom: 6px; }
+  .reset-subtitulo { font-size: 13px; color: #888; margin-bottom: 24px; }
+  .aviso-danger { background: #f8d7da; border-left: 4px solid #e74c3c; border-radius: 8px; padding: 14px 16px; margin-bottom: 24px; font-size: 13px; color: #721c24; }
+  .aviso-success { background: #d4edda; border-left: 4px solid #27ae60; border-radius: 8px; padding: 14px 16px; margin-bottom: 24px; font-size: 13px; color: #155724; }
+  .aviso-error { background: #f8d7da; border-left: 4px solid #e74c3c; border-radius: 8px; padding: 10px 16px; margin-bottom: 16px; font-size: 13px; color: #721c24; font-weight: 600; }
+  .campo-label { display: block; font-size: 13px; font-weight: 600; color: #555; margin-bottom: 6px; margin-top: 16px; }
+  .campo-input { width: 100%; padding: 10px 12px; border: 2px solid #dee2e6; border-radius: 8px; font-size: 14px; color: #2c3e50; box-sizing: border-box; }
+  .campo-input:focus { outline: none; border-color: #e74c3c; }
+  .btn-reset { width: 100%; margin-top: 24px; padding: 12px; background: #e74c3c; color: white; border: none; border-radius: 8px; font-size: 15px; font-weight: 700; cursor: pointer; }
+  .btn-reset:hover { background: #c0392b; }
+  .resumen-tabla { width: 100%; border-collapse: collapse; margin-top: 16px; }
+  .resumen-tabla td { padding: 8px 12px; border-bottom: 1px solid #f0f0f0; font-size: 13px; }
+  .resumen-tabla td:last-child { text-align: right; font-weight: 600; color: #e74c3c; }
+  .resumen-tabla tr:last-child td { border-bottom: none; }
+  .btn-volver { display: inline-block; margin-top: 20px; padding: 10px 22px; background: #3498db; color: white; border-radius: 8px; font-size: 14px; font-weight: 600; text-decoration: none; }
+  .btn-volver:hover { background: #2980b9; text-decoration: none; color: white; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="reset-wrap">
+  <div class="reset-card">
+
+    {% if completado %}
+      <div class="reset-titulo">Reset completado</div>
+      <div class="reset-subtitulo">Todos los datos de demo fueron eliminados correctamente.</div>
+      <div class="aviso-success">
+        El sistema esta listo para comenzar a trabajar con datos reales.<br>
+        El usuario <strong>Admin</strong> fue conservado.
+      </div>
+      <table class="resumen-tabla">
+        <tr><td colspan="2" style="font-weight:600;color:#555;font-size:12px;text-transform:uppercase;letter-spacing:.5px;">Registros eliminados</td></tr>
+        {% for item in resumen %}
+        <tr><td>{{ item.nombre }}</td><td>{{ item.count }}</td></tr>
+        {% endfor %}
+      </table>
+      <br>
+      <strong>Proximos pasos:</strong>
+      <ol style="font-size:13px;color:#555;margin-top:8px;padding-left:18px;line-height:2;">
+        <li>Ingresar proveedores reales</li>
+        <li>Ingresar productos reales</li>
+        <li>Crear usuarios para el equipo</li>
+        <li>Comenzar a registrar importaciones</li>
+      </ol>
+      <a href="/admin/" class="btn-volver">Ir al panel de administracion</a>
+
+    {% else %}
+      <div class="reset-titulo">Reset de datos de demo</div>
+      <div class="reset-subtitulo">Solo administradores</div>
+      <div class="aviso-danger">
+        <strong>ATENCION:</strong> Esta operacion eliminara permanentemente todos los datos
+        de prueba. Esta accion no se puede deshacer.
+      </div>
+      {% if error %}
+      <div class="aviso-error">{{ error }}</div>
+      {% endif %}
+      <form method="post">
+        {% csrf_token %}
+        <label class="campo-label">Contrasena de reset</label>
+        <input type="password" name="contrasena" class="campo-input" placeholder="Ingresa la contrasena..." autocomplete="off">
+        <label class="campo-label">Confirmacion (escribi SI en mayusculas)</label>
+        <input type="text" name="confirmacion" class="campo-input" placeholder="SI" autocomplete="off">
+        <button type="submit" class="btn-reset">Eliminar todos los datos de demo</button>
+      </form>
+      <div style="margin-top:20px;">
+        <a href="/admin/" style="font-size:13px;color:#888;">Cancelar y volver al panel</a>
+      </div>
+    {% endif %}
+
+  </div>
+</div>
+{% endblock %}

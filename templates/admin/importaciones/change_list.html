@@ -1,0 +1,156 @@
+{% extends "admin/change_list.html" %}
+
+{% block extrahead %}
+{{ block.super }}
+<style>
+.productos-row {
+    display: none;
+    background: #f8f9fa;
+}
+.productos-row td {
+    padding: 0 !important;
+}
+.productos-panel {
+    padding: 12px 20px;
+    border-top: 2px solid #3498db;
+    border-bottom: 1px solid #dee2e6;
+}
+.productos-panel table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+.productos-panel table th {
+    background: #e9ecef;
+    padding: 6px 12px;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 600;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+}
+.productos-panel table td {
+    padding: 7px 12px;
+    border-bottom: 1px solid #f0f0f0;
+    color: #2c3e50;
+}
+.productos-panel table tr:last-child td {
+    border-bottom: none;
+}
+.productos-titulo {
+    font-size: 12px;
+    font-weight: 600;
+    color: #3498db;
+    margin-bottom: 8px;
+}
+.btn-expandir.abierto {
+    background: #2c3e50 !important;
+    transform: rotate(0deg);
+}
+.btn-expandir.abierto::before {
+    content: "▲ ";
+}
+.loading-productos {
+    color: #888;
+    font-size: 12px;
+    padding: 8px 0;
+}
+</style>
+{% endblock %}
+
+{% block result_list %}
+{{ block.super }}
+<script>
+const cache = {};
+
+function toggleProductos(event, pk) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const btn = event.currentTarget;
+    const filaActual = btn.closest('tr');
+    const tablaBody = filaActual.parentNode;
+
+    // Buscar o crear fila desplegable
+    let filaDetalle = document.getElementById('productos-row-' + pk);
+
+    if (filaDetalle) {
+        const visible = filaDetalle.style.display === 'table-row';
+        filaDetalle.style.display = visible ? 'none' : 'table-row';
+        btn.classList.toggle('abierto', !visible);
+        return;
+    }
+
+    // Crear fila nueva
+    const colCount = filaActual.cells.length;
+    filaDetalle = document.createElement('tr');
+    filaDetalle.id = 'productos-row-' + pk;
+    filaDetalle.className = 'productos-row';
+    filaDetalle.style.display = 'table-row';
+    filaDetalle.innerHTML = `
+        <td colspan="${colCount}">
+            <div class="productos-panel">
+                <div class="loading-productos">Cargando productos...</div>
+            </div>
+        </td>
+    `;
+    filaActual.after(filaDetalle);
+    btn.classList.add('abierto');
+
+    // Cargar datos
+    if (cache[pk]) {
+        renderProductos(filaDetalle, cache[pk]);
+        return;
+    }
+
+    fetch(`/admin/importaciones/importacion/${pk}/productos/`)
+        .then(r => r.json())
+        .then(data => {
+            cache[pk] = data;
+            renderProductos(filaDetalle, data);
+        })
+        .catch(() => {
+            filaDetalle.querySelector('.productos-panel').innerHTML =
+                '<span style="color:#e74c3c;font-size:12px;">Error al cargar productos.</span>';
+        });
+}
+
+function renderProductos(fila, data) {
+    const items = data.items;
+    if (!items.length) {
+        fila.querySelector('.productos-panel').innerHTML =
+            '<span style="color:#888;font-size:12px;">Sin productos cargados.</span>';
+        return;
+    }
+
+    let html = `<div class="productos-titulo">Productos de OC ${data.numero_orden}</div>
+    <table>
+        <thead>
+            <tr>
+                <th>Codigo</th>
+                <th>Producto</th>
+                <th>Unidad</th>
+                <th>Cant. ordenada</th>
+                <th>Cant. recibida</th>
+                <th>Precio USD</th>
+            </tr>
+        </thead>
+        <tbody>`;
+
+    items.forEach(item => {
+        html += `<tr>
+            <td><strong>${item.codigo}</strong></td>
+            <td>${item.nombre}</td>
+            <td>${item.unidad}</td>
+            <td>${item.cantidad_ordenada}</td>
+            <td>${item.cantidad_recibida}</td>
+            <td>${item.precio}</td>
+        </tr>`;
+    });
+
+    html += `</tbody></table>`;
+    fila.querySelector('.productos-panel').innerHTML = html;
+}
+</script>
+{% endblock %}

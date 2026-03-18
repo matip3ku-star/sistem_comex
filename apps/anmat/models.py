@@ -6,27 +6,24 @@ from apps.importaciones.models import Importacion
 
 class TramiteANMAT(models.Model):
     """
-    Módulo 4 - Trámites ANMAT.
-    Gestión del documento '14 puntos' por cada importación de producto regulado.
-    El stock NO se libera hasta que el estado sea FINALIZADO.
+    Modulo 4 - Tramites ANMAT.
+    Gestion del documento '14 puntos' por cada importacion de producto regulado.
     """
 
     class Estado(models.TextChoices):
-        PRESENTADO = "PRESENTADO", "Presentado"
-        EN_TRAMITE = "EN_TRAMITE", "En trámite"
-        OBSERVADO = "OBSERVADO", "Observado"
-        PAGO_VEP_FALTANTE = "PAGO_VEP", "Pago de VEP faltante"
-        FINALIZADO = "FINALIZADO", "Finalizado - Aprobado"
-        RECHAZADO = "RECHAZADO", "Rechazado"
+        PRESENTADO        = "PRESENTADO", "Presentado"
+        EN_TRAMITE        = "EN_TRAMITE", "En tramite"
+        OBSERVADO         = "OBSERVADO",  "Observado"
+        PAGO_VEP_FALTANTE = "PAGO_VEP",  "Pago de VEP faltante"
+        FINALIZADO        = "FINALIZADO", "Finalizado - Aprobado"
+        RECHAZADO         = "RECHAZADO",  "Rechazado"
 
-    # Estados que bloquean el stock
     ESTADOS_BLOQUEANTES = [
         Estado.PRESENTADO,
         Estado.EN_TRAMITE,
         Estado.OBSERVADO,
         Estado.PAGO_VEP_FALTANTE,
     ]
-    # Estados que requieren alerta urgente
     ESTADOS_ALERTA_URGENTE = [
         Estado.OBSERVADO,
         Estado.PAGO_VEP_FALTANTE,
@@ -41,7 +38,7 @@ class TramiteANMAT(models.Model):
         max_length=20, choices=Estado.choices, default=Estado.PRESENTADO
     )
 
-    # Documentación
+    # Documentacion
     fecha_presentacion = models.DateField()
     numero_expediente = models.CharField(max_length=100, blank=True)
     documento_14_puntos = models.FileField(
@@ -63,14 +60,20 @@ class TramiteANMAT(models.Model):
         max_digits=10, decimal_places=2, null=True, blank=True
     )
     fecha_pago_vep = models.DateField(null=True, blank=True)
+    comprobante_vep = models.FileField(
+        upload_to="anmat/comprobantes_vep/",
+        null=True,
+        blank=True,
+        help_text="Adjuntar comprobante de pago del VEP (PDF, imagen, etc.)",
+    )
 
-    # Aprobación
+    # Aprobacion
     fecha_finalizacion = models.DateField(null=True, blank=True)
     certificado_aprobacion = models.FileField(
         upload_to="anmat/certificados/", null=True, blank=True
     )
 
-    # Despachante responsable del trámite
+    # Despachante responsable
     despachante = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -86,14 +89,12 @@ class TramiteANMAT(models.Model):
     history = HistoricalRecords()
 
     class Meta:
-        verbose_name = "Trámite ANMAT"
-        verbose_name_plural = "Trámites ANMAT"
+        verbose_name = "Tramite ANMAT"
+        verbose_name_plural = "Tramites ANMAT"
         ordering = ["-fecha_presentacion"]
 
     def __str__(self):
-        return (
-            f"ANMAT OC {self.importacion.numero_orden} - {self.get_estado_display()}"
-        )
+        return f"ANMAT OC {self.importacion.numero_orden} - {self.get_estado_display()}"
 
     @property
     def stock_bloqueado(self):
@@ -104,30 +105,26 @@ class TramiteANMAT(models.Model):
         return self.estado in self.ESTADOS_ALERTA_URGENTE
 
     def finalizar(self, fecha_finalizacion, usuario=None):
-        """
-        Finaliza el trámite ANMAT y libera automáticamente el stock de la importación.
-        """
         from django.utils import timezone
-
         self.estado = self.Estado.FINALIZADO
         self.fecha_finalizacion = fecha_finalizacion or timezone.now().date()
         self.save(update_fields=["estado", "fecha_finalizacion", "actualizado_en"])
 
-        # Liberar todos los lotes asociados a la importación
-        for lote in self.importacion.lotes.filter(estado="BLOQUEADO"):
-            lote.liberar()
+        # Liberar lotes bloqueados del modelo LoteImportacion
+        for item in self.importacion.item_set.all():
+            for lote in item.lotes.filter(estado="BLOQUEADO"):
+                lote.liberar()
 
-        # Registrar cambio
         CambioEstadoANMAT.objects.create(
             tramite=self,
             estado_nuevo=self.Estado.FINALIZADO,
             usuario=usuario,
-            notas="Stock liberado automáticamente",
+            notas="Lotes liberados automaticamente",
         )
 
 
 class CambioEstadoANMAT(models.Model):
-    """Historial de cambios de estado del trámite ANMAT."""
+    """Historial de cambios de estado del tramite ANMAT."""
 
     tramite = models.ForeignKey(
         TramiteANMAT, on_delete=models.CASCADE, related_name="cambios_estado"
@@ -151,5 +148,5 @@ class CambioEstadoANMAT(models.Model):
     def __str__(self):
         return (
             f"ANMAT OC {self.tramite.importacion.numero_orden}: "
-            f"{self.estado_anterior} → {self.estado_nuevo}"
+            f"{self.estado_anterior} -> {self.estado_nuevo}"
         )

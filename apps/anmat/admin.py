@@ -1,5 +1,5 @@
 from django.contrib import admin
-from django.utils.html import format_html
+from django.utils.html import format_html, mark_safe
 from django.utils import timezone
 from simple_history.admin import SimpleHistoryAdmin
 from .models import TramiteANMAT, CambioEstadoANMAT
@@ -25,6 +25,7 @@ class TramiteANMATAdmin(SimpleHistoryAdmin):
         "badge_estado",
         "fecha_presentacion",
         "fecha_finalizacion",
+        "badge_comprobante_vep",
         "despachante",
         "dias_en_tramite",
     )
@@ -39,13 +40,13 @@ class TramiteANMATAdmin(SimpleHistoryAdmin):
     inlines = [CambioEstadoANMATInline]
 
     fieldsets = (
-        ("Importación vinculada", {
+        ("Importacion vinculada", {
             "fields": ("importacion", "despachante"),
         }),
-        ("Estado del trámite", {
+        ("Estado del tramite", {
             "fields": ("estado", "fecha_presentacion", "numero_expediente"),
         }),
-        ("Documentación", {
+        ("Documentacion", {
             "fields": ("documento_14_puntos",),
         }),
         ("Observaciones ANMAT", {
@@ -53,13 +54,17 @@ class TramiteANMATAdmin(SimpleHistoryAdmin):
             "classes": ("collapse",),
         }),
         ("VEP", {
-            "fields": ("numero_vep", "monto_vep", "fecha_pago_vep"),
-            "classes": ("collapse",),
+            "fields": (
+                "numero_vep",
+                "monto_vep",
+                "fecha_pago_vep",
+                "comprobante_vep",
+            ),
         }),
-        ("Finalización", {
+        ("Finalizacion", {
             "fields": ("fecha_finalizacion", "certificado_aprobacion"),
         }),
-        ("Notas y auditoría", {
+        ("Notas y auditoria", {
             "fields": ("notas", "creado_en", "actualizado_en"),
             "classes": ("collapse",),
         }),
@@ -75,25 +80,43 @@ class TramiteANMATAdmin(SimpleHistoryAdmin):
     @admin.display(description="Estado", ordering="estado")
     def badge_estado(self, obj):
         colores = {
-            "PRESENTADO":  ("#3498db", "Presentado"),
-            "EN_TRAMITE":  ("#9b59b6", "En trámite"),
-            "OBSERVADO":   ("#e74c3c", "Observado"),
-            "PAGO_VEP":    ("#e67e22", "Pago VEP"),
-            "FINALIZADO":  ("#27ae60", "Finalizado"),
-            "RECHAZADO":   ("#7f8c8d", "Rechazado"),
+            "PRESENTADO": ("#3498db", "Presentado"),
+            "EN_TRAMITE": ("#9b59b6", "En tramite"),
+            "OBSERVADO":  ("#e74c3c", "Observado"),
+            "PAGO_VEP":   ("#e67e22", "Pago VEP"),
+            "FINALIZADO": ("#27ae60", "Finalizado"),
+            "RECHAZADO":  ("#7f8c8d", "Rechazado"),
         }
         color, label = colores.get(obj.estado, ("#999", obj.estado))
-        urgente = obj.requiere_alerta_urgente
-        icono = " ⚠" if urgente else ""
+        urgente = " !" if obj.requiere_alerta_urgente else ""
         return format_html(
             '<span style="color:white;background:{};padding:2px 8px;border-radius:4px;font-size:11px;">{}{}</span>',
-            color, label, icono,
+            color, label, urgente,
         )
 
-    @admin.display(description="Días en trámite")
+    @admin.display(description="Comprobante VEP")
+    def badge_comprobante_vep(self, obj):
+        if not obj.numero_vep:
+            return "—"
+        if obj.comprobante_vep:
+            return mark_safe(
+                '<span style="color:white;background:#27ae60;padding:2px 8px;'
+                'border-radius:4px;font-size:11px;">Adjunto</span>'
+            )
+        if obj.estado == "PAGO_VEP":
+            return mark_safe(
+                '<span style="color:white;background:#e74c3c;padding:2px 8px;'
+                'border-radius:4px;font-size:11px;">Faltante</span>'
+            )
+        return mark_safe(
+            '<span style="color:#888;background:#f0f0f0;padding:2px 8px;'
+            'border-radius:4px;font-size:11px;">Sin cargar</span>'
+        )
+
+    @admin.display(description="Dias en tramite")
     def dias_en_tramite(self, obj):
         fin = obj.fecha_finalizacion or timezone.now().date()
-        return f"{(fin - obj.fecha_presentacion).days} días"
+        return f"{(fin - obj.fecha_presentacion).days} dias"
 
     def _cambiar_estado(self, request, queryset, estado_nuevo, notas=""):
         for tramite in queryset:
@@ -105,23 +128,23 @@ class TramiteANMATAdmin(SimpleHistoryAdmin):
                 estado_anterior=estado_anterior,
                 estado_nuevo=estado_nuevo,
                 usuario=request.user,
-                notas=notas or f"Cambio manual desde el panel de administración",
+                notas=notas or "Cambio manual desde el panel de administracion",
             )
-        self.message_user(request, f"{queryset.count()} trámite(s) actualizado(s).")
+        self.message_user(request, f"{queryset.count()} tramite(s) actualizado(s).")
 
-    @admin.action(description="Marcar como En trámite")
+    @admin.action(description="Marcar como En tramite")
     def marcar_en_tramite(self, request, queryset):
         self._cambiar_estado(request, queryset, "EN_TRAMITE")
 
-    @admin.action(description="Marcar como Observado ⚠")
+    @admin.action(description="Marcar como Observado")
     def marcar_observado(self, request, queryset):
         self._cambiar_estado(request, queryset, "OBSERVADO")
 
-    @admin.action(description="Marcar como Pago VEP faltante ⚠")
+    @admin.action(description="Marcar como Pago VEP faltante")
     def marcar_pago_vep(self, request, queryset):
         self._cambiar_estado(request, queryset, "PAGO_VEP")
 
-    @admin.action(description="✅ Finalizar trámite y liberar stock")
+    @admin.action(description="Finalizar tramite y liberar lotes")
     def finalizar_tramite(self, request, queryset):
         finalizados = 0
         for tramite in queryset.exclude(estado="FINALIZADO"):
@@ -129,5 +152,5 @@ class TramiteANMATAdmin(SimpleHistoryAdmin):
             finalizados += 1
         self.message_user(
             request,
-            f"{finalizados} trámite(s) finalizado(s). Stock liberado automáticamente.",
+            f"{finalizados} tramite(s) finalizado(s). Lotes liberados automaticamente.",
         )
